@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EnergyPro CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0b1120;
+      color: #e2e8f0;
+    }
+    #loginBox {
+      max-width: 400px;
+      margin: 100px auto;
+      background: #1e293b;
+      padding: 40px;
+      border-radius: 20px;
+      text-align: center;
+    }
+    #loginBox input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: none;
+      background: #0f172a;
+      color: white;
+    }
+    #loginBox button {
+      width: 100%;
+      padding: 12px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #sidebar {
+      width: 250px;
+      background: #1e293b;
+      padding: 20px;
+      height: 100vh;
+      position: fixed;
+    }
+    #sidebar button {
+      width: 100%;
+      padding: 12px;
+      margin: 5px 0;
+      background: none;
+      border: none;
+      color: white;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    #sidebar button:hover {
+      background: #2563eb;
+    }
+    #main {
+      margin-left: 250px;
+      padding: 30px;
+    }
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #334155;
+    }
+    .btn-primary {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-icon {
+      background: #334155;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- SIDEBAR -->
+    <div id="sidebar" style="display: none;">
+      <button onclick="nav('auditor')"><i class="fas fa-chart-line"></i> Auditor</button>
+      <button onclick="nav('admin')"><i class="fas fa-cog"></i> Admin</button>
+      <button onclick="logout()"><i class="fas fa-sign-out-alt"></i> Έξοδος</button>
+    </div>
+
+    <!-- MAIN -->
+    <div id="main">
+      <!-- LOGIN -->
+      <div id="loginBox">
+        <h2><i class="fas fa-bolt"></i> EnergyPro</h2>
+        <input type="text" id="username" placeholder="Όνομα χρήστη" value="admin">
+        <input type="password" id="password" placeholder="Κωδικός" value="1234">
+        <button onclick="doLogin()">Σύνδεση</button>
+        <p style="margin-top: 15px; color: #94a3b8;">admin / 1234</p>
+      </div>
+
+      <!-- AUDITOR VIEW -->
+      <div id="auditorView" style="display: none;">
+        <h2>Σύγκριση Προγραμμάτων</h2>
+        <div class="card">
+          <select id="auditCompCo" onchange="updateCompTabs()" style="width: 100%; padding: 10px; margin: 10px 0;">
+            <option value="">Επιλέξτε ανταγωνιστή</option>
+          </select>
+          <input type="number" id="auditKwh" value="50" oninput="compareAllPlans()" style="width: 100%; padding: 10px;">
+          <div id="compPlanTabs" style="margin: 10px 0;"></div>
+        </div>
+        
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Πρόγραμμα</th>
+                <th>Πάγιο</th>
+                <th>Τιμή kWh</th>
+                <th>Σύνολο</th>
+                <th>Σύγκριση</th>
+              </tr>
+            </thead>
+            <tbody id="allPlansBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ADMIN VIEW -->
+      <div id="adminView" style="display: none;">
+        <h2>Διαχείριση</h2>
+        <div class="card">
+          <button class="btn-primary" onclick="addCompany()">+ Νέα Εταιρεία</button>
+          <div id="companyList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ======================== ΔΕΔΟΜΕΝΑ ========================
+    let db = {
+      companies: [
+        { 
+          id: 'c1', 
+          name: 'EnergyPro', 
+          isOur: true, 
+          plans: [
+            { id: 'p1', name: 'Οικιακό Standard', monthlyFixed: 6.5, pricePerKwh: 0.138 },
+            { id: 'p2', name: 'Επαγγελματικό Plus', monthlyFixed: 12.0, pricePerKwh: 0.122 }
+          ] 
+        },
+        { 
+          id: 'c2', 
+          name: 'Ζέφυρος', 
+          isOur: false, 
+          plans: [
+            { id: 'p3', name: 'BASIC Home', monthlyFixed: 7.0, pricePerKwh: 0.155 }
+          ] 
+        }
+      ],
+      users: [
+        { id: 'u1', username: 'admin', password: '1234', role: 'admin', active: true }
+      ]
+    };
+    
+    let currentUser = null;
+
+    // ======================== LOGIN ========================
+    window.doLogin = function() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      const user = db.users.find(u => u.username === username && u.password === password);
+      
+      if (user) {
+        currentUser = user;
+        document.getElementById('loginBox').style.display = 'none';
+        document.getElementById('sidebar').style.display = 'block';
+        updateAuditorSelects();
+        renderAdmin();
+        nav('auditor');
+      } else {
+        alert('Λάθος! Δοκιμάστε admin / 1234');
+      }
+    };
+
+    window.nav = function(view) {
+      document.getElementById('auditorView').style.display = view === 'auditor' ? 'block' : 'none';
+      document.getElementById('adminView').style.display = view === 'admin' ? 'block' : 'none';
+    };
+
+    window.logout = function() {
+      currentUser = null;
+      document.getElementById('sidebar').style.display = 'none';
+      document.getElementById('loginBox').style.display = 'block';
+      document.getElementById('auditorView').style.display = 'none';
+      document.getElementById('adminView').style.display = 'none';
+    };
+
+    // ======================== AUDITOR ========================
+    function updateAuditorSelects() {
+      const sel = document.getElementById('auditCompCo');
+      sel.innerHTML = '<option value="">Επιλέξτε ανταγωνιστή</option>';
+      db.companies.filter(c => !c.isOur).forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+    }
+
+    window.updateCompTabs = function() {
+      const compId = document.getElementById('auditCompCo').value;
+      const tabsDiv = document.getElementById('compPlanTabs');
+      tabsDiv.innerHTML = '';
+      
+      if (!compId) return;
+      
+      const company = db.companies.find(c => c.id === compId);
+      if (!company) return;
+      
+      company.plans.forEach(plan => {
+        const tab = document.createElement('button');
+        tab.innerHTML = plan.name;
+        tab.style.margin = '5px';
+        tab.style.padding = '8px';
+        tab.onclick = () => selectCompPlan(plan.id);
+        tabsDiv.appendChild(tab);
+      });
+    };
+
+    function selectCompPlan(planId) {
+      selectedCompPlanId = planId;
+      compareAllPlans();
+    }
+
+    window.compareAllPlans = function() {
+      const compId = document.getElementById('auditCompCo').value;
+      const kwh = parseFloat(document.getElementById('auditKwh').value) || 0;
+      
+      const ourCompany = db.companies.find(c => c.isOur);
+      if (!ourCompany) return;
+      
+      let compTotal = 0;
+      if (compId && selectedCompPlanId) {
+        const compCompany = db.companies.find(c => c.id === compId);
+        const compPlan = compCompany?.plans.find(p => p.id === selectedCompPlanId);
+        if (compPlan) {
+          compTotal = compPlan.monthlyFixed + (compPlan.pricePerKwh * kwh);
+        }
+      }
+
+      const tbody = document.getElementById('allPlansBody');
+      tbody.innerHTML = '';
+      
+      ourCompany.plans.forEach(plan => {
+        const total = plan.monthlyFixed + (plan.pricePerKwh * kwh);
+        const row = tbody.insertRow();
+        row.insertCell().innerText = plan.name;
+        row.insertCell().innerText = '€' + plan.monthlyFixed;
+        row.insertCell().innerText = '€' + plan.pricePerKwh;
+        row.insertCell().innerText = '€' + total.toFixed(2);
+        
+        let status = '';
+        if (compTotal > 0) {
+          if (total < compTotal) status = 'Φθηνότερο';
+          else if (total > compTotal) status = 'Ακριβότερο';
+          else status = 'Ισότιμο';
+        }
+        row.insertCell().innerText = status;
+      });
+    };
+
+    // ======================== ADMIN ========================
+    window.renderAdmin = function() {
+      const container = document.getElementById('companyList');
+      let html = '';
+      
+      db.companies.forEach(company => {
+        html += `<div style="margin: 20px 0; padding: 15px; background: #0f172a; border-radius: 10px;">
+          <h3>${company.name} ${company.isOur ? '⭐' : ''}</h3>
+          <button class="btn-icon" onclick="addPlan('${company.id}')">+ Πρόγραμμα</button>
+          <button class="btn-icon" onclick="editCompany('${company.id}')">✏️</button>
+          <button class="btn-icon" onclick="deleteCompany('${company.id}')">🗑️</button>
+          <table>
+            <thead>
+              <tr>
+                <th>Πρόγραμμα</th>
+                <th>Πάγιο</th>
+                <th>Τιμή</th>
+                <th>Ενέργειες</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${company.plans.map(p => `
+                <tr>
+                  <td>${p.name}</td>
+                  <td>€${p.monthlyFixed}</td>
+                  <td>€${p.pricePerKwh}</td>
+                  <td>
+                    <button class="btn-icon" onclick="editPlan('${company.id}','${p.id}')">✏️</button>
+                    <button class="btn-icon" onclick="deletePlan('${company.id}','${p.id}')">🗑️</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      });
+      
+      container.innerHTML = html;
+    };
+
+    window.addCompany = function() {
+      const name = prompt('Όνομα εταιρείας:');
+      if (!name) return;
+      const isOur = confirm('Είναι δική μας;');
+      db.companies.push({
+        id: Date.now() + '',
+        name: name,
+        isOur: isOur,
+        plans: []
+      });
+      renderAdmin();
+      updateAuditorSelects();
+    };
+
+    window.editCompany = function(id) {
+      const company = db.companies.find(c => c.id === id);
+      if (!company) return;
+      const newName = prompt('Νέο όνομα:', company.name);
+      if (newName) company.name = newName;
+      renderAdmin();
+      updateAuditorSelects();
+    };
+
+    window.deleteCompany = function(id) {
+      if (!confirm('Σίγουρα;')) return;
+      db.companies = db.companies.filter(c => c.id !== id);
+      renderAdmin();
+      updateAuditorSelects();
+    };
+
+    window.addPlan = function(companyId) {
+      const company = db.companies.find(c => c.id === companyId);
+      if (!company) return;
+      
+      const name = prompt('Όνομα προγράμματος:');
+      if (!name) return;
+      const fixed = parseFloat(prompt('Πάγιο μήνα (€):'));
+      if (isNaN(fixed)) return;
+      const price = parseFloat(prompt('Τιμή kWh (€):'));
+      if (isNaN(price)) return;
+      
+      company.plans.push({
+        id: Date.now() + '',
+        name: name,
+        monthlyFixed: fixed,
+        pricePerKwh: price
+      });
+      
+      renderAdmin();
+      updateAuditorSelects();
+    };
+
+    window.editPlan = function(companyId, planId) {
+      const company = db.companies.find(c => c.id === companyId);
+      if (!company) return;
+      const plan = company.plans.find(p => p.id === planId);
+      if (!plan) return;
+      
+      const name = prompt('Όνομα προγράμματος:', plan.name);
+      if (name) plan.name = name;
+      const fixed = parseFloat(prompt('Πάγιο μήνα (€):', plan.monthlyFixed));
+      if (!isNaN(fixed)) plan.monthlyFixed = fixed;
+      const price = parseFloat(prompt('Τιμή kWh (€):', plan.pricePerKwh));
+      if (!isNaN(price)) plan.pricePerKwh = price;
+      
+      renderAdmin();
+      updateAuditorSelects();
+    };
+
+    window.deletePlan = function(companyId, planId) {
+      const company = db.companies.find(c => c.id === companyId);
+      if (!company) return;
+      company.plans = company.plans.filter(p => p.id !== planId);
+      renderAdmin();
+      updateAuditorSelects();
+    };
+  </script>
+</body>
+</html>
