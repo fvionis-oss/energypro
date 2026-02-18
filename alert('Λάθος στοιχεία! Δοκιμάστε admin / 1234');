@@ -810,7 +810,7 @@ let tabId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 let selectedCompPlanId = null;
 
 // ΤΟ BIN ID ΣΑΣ ΑΠΟ ΤΟ JSONBIN
-const BIN_ID = '69957181d0ea881f40c33b7d';
+const BIN_ID = '69957a67ae596e708f33b8a4';
 
 // Φόρτωση δεδομένων από JSONBin
 async function loadDB() {
@@ -959,4 +959,5 @@ window.doLogin = async function() {
 </body>
 
 </html>
+
 
