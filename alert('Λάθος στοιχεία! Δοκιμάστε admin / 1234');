@@ -803,551 +803,93 @@
     <div class="bubble-button" onclick="toggleChat()"><i class="fas fa-comment-dots"></i></div>
   </div>
 
-  <script>
-    // ======================== ΒΑΣΗ ΔΕΔΟΜΕΝΩΝ ========================
-    let db = { companies: [], users: [] };
-    let currentUser = null;
-    let tabId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    let selectedCompPlanId = null;
-    // ======================== ΒΑΣΗ ΔΕΔΟΜΕΝΩΝ ========================
+  <script>// ======================== ΒΑΣΗ ΔΕΔΟΜΕΝΩΝ ========================
 let db = { companies: [], users: [] };
 let currentUser = null;
 let tabId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 let selectedCompPlanId = null;
 
-// ΠΡΟΣΘΗΚΗ ΓΙΑ ΚΟΙΝΗ ΒΑΣΗ - ΒΑΛΤΕ ΤΟ BIN ID ΠΟΥ ΣΑΣ ΕΔΩΣΕ ΤΟ JSONBIN
+// ΤΟ BIN ID ΣΑΣ ΑΠΟ ΤΟ JSONBIN
 const BIN_ID = '69957181d0ea881f40c33b7d';
 
-    const DEFAULT_DB = {
-      companies: [
-        { id: 'c1', name: 'EnergyPro', isOur: true, plans: [
-          { id: 'p1', name: 'Οικιακό Standard', monthlyFixed: 6.5, pricePerKwh: 0.138, description: 'Ιδανικό για οικιακή χρήση', monthlyLimit: null, yearlyLimit: null, tolerancePercent: null, overLimitPrice: null, discountPercent: null, nightPrice: null, nightHours: '', forTelesales: true, forWinback: false },
-          { id: 'p2', name: 'Επαγγελματικό Plus', monthlyFixed: 12.0, pricePerKwh: 0.122, description: 'Για επαγγελματίες με υψηλή κατανάλωση', monthlyLimit: 2000, yearlyLimit: 24000, tolerancePercent: 10, overLimitPrice: 0.15, discountPercent: null, nightPrice: 0.10, nightHours: '23:00-07:00', forTelesales: false, forWinback: true },
-          { id: 'p3', name: 'Νυχτερινό Οικιακό', monthlyFixed: 5.0, pricePerKwh: 0.148, description: 'Χαμηλή νυχτερινή χρέωση', nightPrice: 0.09, nightHours: '02:00-06:00', forTelesales: true, forWinback: true }
-        ]},
-        { id: 'c2', name: 'Ζέφυρος Ενεργειακή', isOur: false, plans: [
-          { id: 'p4', name: 'BASIC Home', monthlyFixed: 7.0, pricePerKwh: 0.155, description: 'Οικονομικό οικιακό πακέτο', monthlyLimit: 1000, overLimitPrice: 0.18 },
-          { id: 'p5', name: 'Business Power', monthlyFixed: 13.5, pricePerKwh: 0.132, description: 'Επαγγελματικό με σταθερή τιμή', yearlyLimit: 30000, overLimitPrice: 0.14 }
-        ]},
-        { id: 'c3', name: 'Voltera', isOur: false, plans: [
-          { id: 'p6', name: 'Smart Home', monthlyFixed: 5.8, pricePerKwh: 0.149, description: 'Έξυπνο τιμολόγιο με νυχτερινή χρέωση', nightPrice: 0.09, nightHours: '02:00-06:00' }
-        ]}
-      ],
-      users: [
-        { id: 'u1', username: 'admin', email: 'admin@energypro.gr', role: 'admin', active: true, password: '1234' },
-        { id: 'u2', username: 'maria', email: 'maria@energypro.gr', role: 'telesales', active: true, password: '1234' },
-        { id: 'u3', username: 'petros', email: 'petros@energypro.gr', role: 'winback', active: true, password: '1234' }
-      ]
-    };
-
-    async function loadDB() {
+// Φόρτωση δεδομένων από JSONBin
+async function loadDB() {
   try {
-    // Φόρτωση από κοινή βάση JSONBin
     const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
     const data = await res.json();
     db = data.record;
-    console.log('Φορτώθηκαν κοινά δεδομένα!');
-  } catch {
-    // Αν αποτύχει, χρήση localStorage
+    console.log('Φορτώθηκαν κοινά δεδομένα από JSONBin');
+  } catch (error) {
+    console.log('Σφάλμα φόρτωσης, χρήση localStorage');
     const stored = localStorage.getItem('energypro_db');
     if (stored) {
       db = JSON.parse(stored);
     } else {
-      db = JSON.parse(JSON.stringify(DEFAULT_DB));
+      // Default δεδομένα
+      db = {
+        companies: [
+          { id: 'c1', name: 'EnergyPro', isOur: true, plans: [
+            { id: 'p1', name: 'Οικιακό Standard', monthlyFixed: 6.5, pricePerKwh: 0.138, forTelesales: true, forWinback: false },
+            { id: 'p2', name: 'Επαγγελματικό Plus', monthlyFixed: 12.0, pricePerKwh: 0.122, forTelesales: false, forWinback: true }
+          ]},
+          { id: 'c2', name: 'Ζέφυρος Ενεργειακή', isOur: false, plans: [
+            { id: 'p4', name: 'BASIC Home', monthlyFixed: 7.0, pricePerKwh: 0.155 }
+          ]}
+        ],
+        users: [
+          { id: 'u1', username: 'admin', password: '1234', role: 'admin', active: true },
+          { id: 'u2', username: 'maria', password: '1234', role: 'telesales', active: true }
+        ]
+      };
     }
   }
   saveDB();
 }
 
+// Αποθήκευση δεδομένων στο JSONBin
 async function saveDB() {
   // Τοπική αποθήκευση
   localStorage.setItem('energypro_db', JSON.stringify(db));
   
-  // Αποθήκευση στην κοινή βάση
+  // Αποθήκευση στο cloud για όλους
   try {
     await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(db)
     });
-    console.log('Αποθηκεύτηκαν κοινά δεδομένα!');
+    console.log('Αποθηκεύτηκαν κοινά δεδομένα στο JSONBin');
   } catch (e) {
-    console.log('Προσωρινά μόνο τοπικά');
+    console.log('Προσωρινή αποθήκευση μόνο τοπικά');
   }
 }
-      saveDB();
-    }
-    function saveDB() { localStorage.setItem('energypro_db', JSON.stringify(db)); }
-    function generateId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 9); }
 
-    // ======================== ΘΕΜΑΤΑ ========================
-    window.setTheme = function(themeClass) {
-      document.body.className = '';
-      document.body.classList.add(themeClass);
-      if (!currentUser) document.body.classList.add('login-active');
-      localStorage.setItem('energypro_theme', themeClass);
-    };
-    const savedTheme = localStorage.getItem('energypro_theme');
-    if (savedTheme) { document.body.className = savedTheme; document.getElementById('themeSelect').value = savedTheme; }
-    else setTheme('theme-dark');
-    if (!currentUser) document.body.classList.add('login-active');
-
-    // ======================== ONLINE USERS ========================
-    function updateOnlineUsers() {
-      const now = Date.now();
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('online_')) {
-          try {
-            const data = JSON.parse(localStorage.getItem(key));
-            if (now - data.timestamp > 10000) localStorage.removeItem(key);
-          } catch (e) {}
-        }
-      }
-      if (currentUser) {
-        localStorage.setItem(`online_${tabId}`, JSON.stringify({ id: tabId, username: currentUser.username, role: currentUser.role, timestamp: now }));
-      }
-      let users = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('online_')) {
-          try {
-            const data = JSON.parse(localStorage.getItem(key));
-            if (data.username) users.push(data);
-          } catch (e) {}
-        }
-      }
-      const unique = Array.from(new Map(users.map(u => [u.username, u])).values());
-      document.getElementById('onlineCount').innerText = unique.length;
-      const listEl = document.getElementById('onlineUsersList');
-      listEl.innerHTML = '';
-      unique.forEach(u => {
-        let li = document.createElement('li');
-        li.innerHTML = getRoleIcon(u.role) + ' ' + u.username;
-        listEl.appendChild(li);
-      });
-    }
-    setInterval(updateOnlineUsers, 5000);
-    window.addEventListener('beforeunload', () => localStorage.removeItem(`online_${tabId}`));
-
-    // ======================== ΕΙΚΟΝΙΔΙΑ ΡΟΛΩΝ ========================
-    function getRoleIcon(role) {
-      switch(role) {
-        case 'admin': return '<i class="fas fa-crown" style="color: #fbbf24;"></i>';
-        case 'telesales': return '<i class="fas fa-phone-alt" style="color: #60a5fa;"></i>';
-        case 'winback': return '<i class="fas fa-undo-alt" style="color: #f87171;"></i>';
-        default: return '<i class="fas fa-user"></i>';
-      }
-    }
-
-    // ======================== ΕΛΕΓΧΟΣ ΠΡΟΣΒΑΣΗΣ ========================
-    function canViewPlan(plan) {
-      if (!currentUser) return false;
-      if (currentUser.role === 'admin') return true;
-      if (currentUser.role === 'telesales') return plan.forTelesales === true;
-      if (currentUser.role === 'winback') return plan.forWinback === true;
-      return false;
-    }
-
-    // ======================== ΥΠΟΛΟΓΙΣΜΟΣ ΚΟΣΤΟΥΣ ========================
-    function calculatePlanCost(plan, monthlyKwh, isCompetitor = false) {
-      if (!plan) return { fixed: 0, within: 0, excess: 0, total: 0, withinKwh: 0, excessKwh: 0, yearlyExcess: false, monthlyExcess: false, annualExcessCost: 0 };
-      let withinKwh = monthlyKwh, excessKwh = 0, priceWithin = plan.pricePerKwh, priceExcess = plan.overLimitPrice !== null ? plan.overLimitPrice : plan.pricePerKwh;
-      let monthlyExcess = false, yearlyExcess = false, annualExcessCost = 0;
-      if (plan.monthlyLimit && monthlyKwh > plan.monthlyLimit) {
-        withinKwh = plan.monthlyLimit; excessKwh = monthlyKwh - plan.monthlyLimit; monthlyExcess = true;
-      }
-      if (plan.yearlyLimit) {
-        const yearlyKwh = monthlyKwh * 12;
-        if (yearlyKwh > plan.yearlyLimit) {
-          yearlyExcess = true;
-          if (isCompetitor) {
-            const excessYearly = yearlyKwh - plan.yearlyLimit;
-            annualExcessCost = excessYearly * priceExcess;
-            withinKwh = monthlyKwh; excessKwh = 0;
-          } else {
-            if (!monthlyExcess) {
-              const allowedMonthly = plan.yearlyLimit / 12;
-              if (monthlyKwh > allowedMonthly) { withinKwh = allowedMonthly; excessKwh = monthlyKwh - allowedMonthly; }
-            }
-          }
-        }
-      }
-      const fixed = plan.monthlyFixed;
-      const withinCost = withinKwh * priceWithin;
-      const excessCost = excessKwh * priceExcess;
-      const total = fixed + withinCost + excessCost + (isCompetitor ? annualExcessCost / 12 : 0);
-      return { fixed, within: withinCost, excess: excessCost, total, withinKwh, excessKwh, yearlyExcess, monthlyExcess, annualExcessCost };
-    }
-
-    // ======================== AUDITOR ========================
-    function updateAuditorSelects() {
-      const compCoSel = document.getElementById('auditCompCo');
-      compCoSel.innerHTML = '<option value="">-- Επιλέξτε ανταγωνιστή --</option>';
-      db.companies.filter(c => !c.isOur).forEach(c => compCoSel.add(new Option(c.name, c.id)));
-      selectedCompPlanId = null;
-      updateCompTabs(); compareAllPlans();
-    }
-
-    window.updateCompTabs = function() {
-      const compCoSel = document.getElementById('auditCompCo');
-      const tabsContainer = document.getElementById('compPlanTabs');
-      const detailsPanel = document.getElementById('compPlanDetails');
-      const companyId = compCoSel.value;
-      tabsContainer.innerHTML = '';
-      if (!companyId) { detailsPanel.style.display = 'none'; return; }
-      const company = db.companies.find(c => c.id === companyId);
-      if (!company || !company.plans.length) {
-        tabsContainer.innerHTML = '<div class="msg-error">Δεν υπάρχουν προγράμματα</div>';
-        detailsPanel.style.display = 'none'; return;
-      }
-      company.plans.forEach(plan => {
-        const tab = document.createElement('div');
-        tab.className = 'plan-tab';
-        if (selectedCompPlanId === plan.id) tab.classList.add('active');
-        tab.setAttribute('data-plan-id', plan.id);
-        tab.innerHTML = `${plan.name} <i class="fas fa-info-circle"></i>`;
-        tab.onclick = () => selectCompPlan(plan.id);
-        tabsContainer.appendChild(tab);
-      });
-      if (!selectedCompPlanId || !company.plans.find(p => p.id === selectedCompPlanId)) selectCompPlan(company.plans[0].id);
-      else { showCompPlanDetails(selectedCompPlanId); compareAllPlans(); }
-    };
-
-    function selectCompPlan(planId) {
-      selectedCompPlanId = planId;
-      document.querySelectorAll('.plan-tab').forEach(t => t.classList.toggle('active', t.dataset.planId === planId));
-      showCompPlanDetails(planId); compareAllPlans();
-    }
-
-    function showCompPlanDetails(planId) {
-      const detailsPanel = document.getElementById('compPlanDetails');
-      const detailContent = document.getElementById('compPlanDetailContent');
-      const companyId = document.getElementById('auditCompCo').value;
-      if (!companyId) return;
-      const plan = db.companies.find(c => c.id === companyId)?.plans.find(p => p.id === planId);
-      if (!plan) return;
-      let html = '<div class="detail-grid">';
-      html += `<div class="detail-item"><i class="fas fa-tag"></i> <strong>${plan.name}</strong></div>`;
-      html += `<div class="detail-item"><i class="fas fa-euro-sign"></i> Πάγιο: €${(plan.monthlyFixed||0).toFixed(2)}</div>`;
-      html += `<div class="detail-item"><i class="fas fa-bolt"></i> Τιμή: €${(plan.pricePerKwh||0).toFixed(3)}</div>`;
-      if (plan.monthlyLimit) html += `<div class="detail-item"><i class="fas fa-calendar"></i> Μην. όριο: ${plan.monthlyLimit} kWh</div>`;
-      if (plan.yearlyLimit) html += `<div class="detail-item"><i class="fas fa-calendar-alt"></i> Ετήσιο όριο: ${plan.yearlyLimit} kWh</div>`;
-      if (plan.tolerancePercent) html += `<div class="detail-item"><i class="fas fa-gauge-high"></i> Ανοχή: ${plan.tolerancePercent}%</div>`;
-      if (plan.overLimitPrice) html += `<div class="detail-item"><i class="fas fa-exclamation-circle"></i> Υπέρβαση: €${plan.overLimitPrice}</div>`;
-      if (plan.discountPercent) html += `<div class="detail-item"><i class="fas fa-percent"></i> Έκπτωση: ${plan.discountPercent}%</div>`;
-      if (plan.nightPrice) html += `<div class="detail-item"><i class="fas fa-moon"></i> Νυχτερινό: €${plan.nightPrice} (${plan.nightHours||'—'})</div>`;
-      html += `<div class="detail-item"><i class="fas fa-align-left"></i> ${plan.description||'—'}</div>`;
-      html += '</div>';
-      detailContent.innerHTML = html;
-      detailsPanel.style.display = 'block';
-    }
-
-    window.compareAllPlans = function() {
-      const compCoId = document.getElementById('auditCompCo').value;
-      const kwh = parseFloat(document.getElementById('auditKwh').value) || 0;
-      const ourCompany = db.companies.find(c => c.isOur);
-      if (!ourCompany) return;
-      let compPlan = null;
-      if (compCoId && selectedCompPlanId) {
-        const compCompany = db.companies.find(c => c.id === compCoId);
-        compPlan = compCompany?.plans.find(p => p.id === selectedCompPlanId);
-      }
-      const compCost = calculatePlanCost(compPlan, kwh, true);
-      const compTotal = compCost.total;
-      const breakdownDiv = document.getElementById('compCostBreakdown');
-      if (compPlan) {
-        let bhtml = `<div class="breakdown-item"><strong>Ανάλυση κόστους ανταγωνιστή:</strong></div><div class="breakdown-item">Μηνιαίο πάγιο: €${compCost.fixed.toFixed(2)}</div>`;
-        if (compCost.yearlyExcess && compPlan.yearlyLimit) {
-          const yearlyKwh = kwh * 12, excessYearly = yearlyKwh - compPlan.yearlyLimit;
-          bhtml += `<div class="breakdown-item annual-excess">Ετήσια υπέρβαση: ${excessYearly.toFixed(0)} kWh → €${compCost.annualExcessCost.toFixed(2)} (ετήσια εκκαθάριση)</div>`;
-          bhtml += `<div class="breakdown-item">Μηνιαία αναλογία: €${(compCost.annualExcessCost/12).toFixed(2)}</div>`;
-        } else if (compCost.monthlyExcess) {
-          bhtml += `<div class="breakdown-item msg-warning">Υπέρβαση μηνιαίου ορίου: ${compCost.excessKwh.toFixed(0)} kWh → €${compCost.excess.toFixed(2)}</div>`;
-        }
-        bhtml += `<div class="breakdown-item"><strong>Σύνολο μήνα: €${compTotal.toFixed(2)}</strong></div>`;
-        breakdownDiv.innerHTML = bhtml;
-      } else breakdownDiv.innerHTML = '';
-
-      let plansData = [], warnings = [];
-      const visiblePlans = ourCompany.plans.filter(p => canViewPlan(p));
-      visiblePlans.forEach(plan => {
-        const myCost = calculatePlanCost(plan, kwh, false);
-        const myTotal = myCost.total;
-        let limitOk = true;
-        if (myCost.monthlyExcess || myCost.yearlyExcess) {
-          limitOk = false;
-          let msg = `Το πρόγραμμα "${plan.name}" υπερβαίνει `;
-          if (myCost.monthlyExcess && myCost.yearlyExcess) msg += `μηνιαίο (${plan.monthlyLimit} kWh) και ετήσιο όριο (${plan.yearlyLimit} kWh).`;
-          else if (myCost.monthlyExcess) msg += `το μηνιαίο όριο των ${plan.monthlyLimit} kWh.`;
-          else if (myCost.yearlyExcess) msg += `το ετήσιο όριο των ${plan.yearlyLimit} kWh.`;
-          warnings.push(msg);
-        }
-        const benefitMonth = compTotal - myTotal;
-        const percent = compTotal > 0 ? ((compTotal - myTotal) / compTotal * 100).toFixed(1) : 0;
-        plansData.push({ name: plan.name, monthlyFixed: plan.monthlyFixed, price: plan.pricePerKwh, varCost: myCost.within + myCost.excess, total: myTotal, limitOk, benefitMonth, benefitYear: benefitMonth*12, percent });
-      });
-      const validPlans = plansData.filter(p => p.limitOk);
-      const cheapestTotal = validPlans.length ? Math.min(...validPlans.map(p => p.total)) : null;
-      const tbody = document.getElementById('allPlansBody');
-      tbody.innerHTML = '';
-      plansData.forEach(p => {
-        const row = tbody.insertRow();
-        if (!p.limitOk) row.classList.add('over-limit');
-        else if (p.total === cheapestTotal) row.classList.add('cheapest');
-        row.insertCell().innerText = p.name;
-        row.insertCell().innerText = '€' + p.monthlyFixed.toFixed(2);
-        row.insertCell().innerText = '€' + p.price.toFixed(3);
-        row.insertCell().innerText = '€' + p.varCost.toFixed(2);
-        row.insertCell().innerText = p.limitOk ? '€' + p.total.toFixed(2) : '—';
-        const bm = row.insertCell(); bm.innerText = p.limitOk ? '€' + p.benefitMonth.toFixed(2) : '—'; if (p.limitOk) bm.className = p.benefitMonth >=0 ? 'positive-benefit' : 'negative-benefit';
-        const by = row.insertCell(); by.innerText = p.limitOk ? '€' + p.benefitYear.toFixed(2) : '—'; if (p.limitOk) by.className = p.benefitYear >=0 ? 'positive-benefit' : 'negative-benefit';
-        const pc = row.insertCell(); pc.innerText = p.limitOk ? (p.benefitMonth >=0 ? '+' : '') + p.percent + '%' : '—'; if (p.limitOk) pc.className = p.benefitMonth >=0 ? 'positive-benefit' : 'negative-benefit';
-        row.insertCell().innerText = p.limitOk ? (p.total < compTotal ? 'Φθηνότερο' : p.total > compTotal ? 'Ακριβότερο' : 'Ισότιμο') : 'Υπέρβαση ορίου';
-      });
-      const warnDiv = document.getElementById('limitWarnings');
-      if (warnings.length) {
-        let html = '<i class="fas fa-exclamation-triangle"></i> <strong>Προσοχή:</strong><br>';
-        warnings.forEach(w => html += '⚠️ ' + w + '<br>');
-        warnDiv.innerHTML = html;
-      } else warnDiv.innerHTML = '';
-      if (cheapestTotal !== null) {
-        if (cheapestTotal < compTotal) document.getElementById('resultSuggestion').innerText = '✅ Το φθηνότερο πρόγραμμα EnergyPro είναι φθηνότερο από τον ανταγωνιστή.';
-        else if (cheapestTotal > compTotal) document.getElementById('resultSuggestion').innerText = '⚠️ Ο ανταγωνιστής είναι φθηνότερος από όλα τα προγράμματά μας.';
-        else document.getElementById('resultSuggestion').innerText = '⟷ Υπάρχει πρόγραμμα με ίσο κόστος.';
-      } else document.getElementById('resultSuggestion').innerText = '❌ Κανένα πρόγραμμα δεν πληροί τα όρια.';
-    };
-
-    // ======================== ADMIN (πλήρες) ========================
-    function renderAdmin() {
-      const container = document.getElementById('companyList');
-      if (!container) return;
-      let html = '';
-      db.companies.forEach(company => {
-        const planRows = company.plans.map(p => `<tr>
-          <td>${p.name}</td><td>€${(p.monthlyFixed||0).toFixed(2)}</td><td>€${(p.pricePerKwh||0).toFixed(3)}</td>
-          <td>${p.monthlyLimit||'-'}</td><td>${p.tolerancePercent?p.tolerancePercent+'%':'-'}</td><td>${p.nightPrice?'Νυχτ.':''}</td>
-          <td>${p.forTelesales?'T':''} ${p.forWinback?'W':''}</td>
-          <td><button class="btn-icon" onclick="openPlanModal('${company.id}','${p.id}')"><i class="fas fa-edit"></i></button>
-          <button class="btn-icon" onclick="deletePlan('${company.id}','${p.id}')"><i class="fas fa-trash"></i></button>
-          <button class="btn-icon" onclick="copyPlan('${company.id}','${p.id}')" title="Αντιγραφή"><i class="fas fa-copy"></i></button></td>
-        </tr>`).join('');
-        html += `<div class="sub-card"><div style="display:flex; justify-content:space-between;"><h4>${company.name} ${company.isOur?'<span class="badge">δικός μας</span>':''}</h4>
-          <div><button class="btn-icon" onclick="openPlanModal('${company.id}')"><i class="fas fa-plus-circle"></i> πρόγραμμα</button>
-          <button class="btn-icon" onclick="editCompany('${company.id}')"><i class="fas fa-pen"></i></button>
-          <button class="btn-icon" onclick="deleteCompany('${company.id}')"><i class="fas fa-building-circle-xmark"></i></button></div></div>
-          <table><thead><tr><th>Πρόγραμμα</th><th>Πάγιο</th><th>Τιμή</th><th>Όριο</th><th>Ανοχή</th><th>Νυχτ.</th><th>Ορατό</th><th></th></tr></thead><tbody>${planRows}</tbody></table></div>`;
-      });
-      container.innerHTML = html;
-      document.getElementById('statCompanies').innerText = db.companies.length;
-      document.getElementById('statPlans').innerText = db.companies.reduce((a,c)=>a+c.plans.length,0);
-      document.getElementById('statUsers').innerText = db.users.length;
-      renderUserTable();
-    }
-
-    function renderUserTable() {
-      const tbody = document.getElementById('userTableBody');
-      tbody.innerHTML = db.users.map(u => `<tr>
-        <td>${getRoleIcon(u.role)}</td>
-        <td>${u.username}</td>
-        <td>${u.email}</td>
-        <td>${u.role}</td>
-        <td>${u.active?'✅':'❌'}</td>
-        <td><button class="btn-icon" onclick="openUserModal('${u.id}')"><i class="fas fa-edit"></i></button>
-        <button class="btn-icon" onclick="deleteUser('${u.id}')"><i class="fas fa-user-minus"></i></button></td>
-      </tr>`).join('');
-    }
-
-    window.openAddCompanyModal = () => {
-      let name = prompt('Όνομα εταιρείας:'); if(!name) return;
-      let isOur = confirm('Είναι δική μας;');
-      db.companies.push({ id: generateId(), name, isOur, plans: [] });
-      saveDB(); renderAdmin(); updateAuditorSelects();
-    };
-    window.editCompany = (id) => {
-      let co = db.companies.find(c=>c.id===id); if(!co) return;
-      let newName = prompt('Νέο όνομα:', co.name); if(newName) co.name = newName;
-      saveDB(); renderAdmin(); updateAuditorSelects();
-    };
-    window.deleteCompany = (id) => {
-      if(!confirm('Σίγουρα;')) return;
-      db.companies = db.companies.filter(c=>c.id!==id);
-      saveDB(); renderAdmin(); updateAuditorSelects();
-    };
-
-    window.openPlanModal = (companyId, planId=null) => {
-      document.getElementById('planModalTitle').innerText = planId ? 'Επεξεργασία' : 'Νέο πρόγραμμα';
-      document.getElementById('planId').value = planId || '';
-      let sel = document.getElementById('planCompanySelect');
-      sel.innerHTML = db.companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      if (companyId) sel.value = companyId;
-      if (planId) {
-        let plan = db.companies.find(c=>c.id===companyId)?.plans.find(p=>p.id===planId);
-        if (plan) {
-          document.getElementById('planName').value = plan.name || '';
-          document.getElementById('planMonthlyFixed').value = plan.monthlyFixed || 0;
-          document.getElementById('planPricePerKwh').value = plan.pricePerKwh || 0;
-          document.getElementById('planMonthlyLimit').value = plan.monthlyLimit!==null ? plan.monthlyLimit : '';
-          document.getElementById('planYearlyLimit').value = plan.yearlyLimit!==null ? plan.yearlyLimit : '';
-          document.getElementById('planTolerancePercent').value = plan.tolerancePercent!==null ? plan.tolerancePercent : '';
-          document.getElementById('planOverLimitPrice').value = plan.overLimitPrice!==null ? plan.overLimitPrice : '';
-          document.getElementById('planDiscountPercent').value = plan.discountPercent!==null ? plan.discountPercent : '';
-          document.getElementById('planNightPrice').value = plan.nightPrice!==null ? plan.nightPrice : '';
-          document.getElementById('planNightHours').value = plan.nightHours || '';
-          document.getElementById('planDescription').value = plan.description || '';
-          document.getElementById('planForTelesales').checked = plan.forTelesales || false;
-          document.getElementById('planForWinback').checked = plan.forWinback || false;
-        }
-      } else {
-        document.getElementById('planName').value = '';
-        document.getElementById('planMonthlyFixed').value = '5.0';
-        document.getElementById('planPricePerKwh').value = '0.14';
-        document.getElementById('planMonthlyLimit').value = '';
-        document.getElementById('planYearlyLimit').value = '';
-        document.getElementById('planTolerancePercent').value = '';
-        document.getElementById('planOverLimitPrice').value = '';
-        document.getElementById('planDiscountPercent').value = '';
-        document.getElementById('planNightPrice').value = '';
-        document.getElementById('planNightHours').value = '';
-        document.getElementById('planDescription').value = '';
-        document.getElementById('planForTelesales').checked = false;
-        document.getElementById('planForWinback').checked = false;
-      }
-      document.getElementById('planModal').style.display = 'flex';
-    };
-
-    window.copyPlan = (sourceCompanyId, sourcePlanId) => {
-      let sourcePlan = db.companies.find(c=>c.id===sourceCompanyId)?.plans.find(p=>p.id===sourcePlanId);
-      if (!sourcePlan) return;
-      document.getElementById('planModalTitle').innerText = 'Αντιγραφή προγράμματος';
-      document.getElementById('planId').value = '';
-      let sel = document.getElementById('planCompanySelect');
-      sel.innerHTML = db.companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      sel.value = sourceCompanyId;
-      document.getElementById('planName').value = sourcePlan.name + ' (αντίγραφο)';
-      document.getElementById('planMonthlyFixed').value = sourcePlan.monthlyFixed;
-      document.getElementById('planPricePerKwh').value = sourcePlan.pricePerKwh;
-      document.getElementById('planMonthlyLimit').value = sourcePlan.monthlyLimit!==null ? sourcePlan.monthlyLimit : '';
-      document.getElementById('planYearlyLimit').value = sourcePlan.yearlyLimit!==null ? sourcePlan.yearlyLimit : '';
-      document.getElementById('planTolerancePercent').value = sourcePlan.tolerancePercent!==null ? sourcePlan.tolerancePercent : '';
-      document.getElementById('planOverLimitPrice').value = sourcePlan.overLimitPrice!==null ? sourcePlan.overLimitPrice : '';
-      document.getElementById('planDiscountPercent').value = sourcePlan.discountPercent!==null ? sourcePlan.discountPercent : '';
-      document.getElementById('planNightPrice').value = sourcePlan.nightPrice!==null ? sourcePlan.nightPrice : '';
-      document.getElementById('planNightHours').value = sourcePlan.nightHours || '';
-      document.getElementById('planDescription').value = sourcePlan.description || '';
-      document.getElementById('planForTelesales').checked = sourcePlan.forTelesales || false;
-      document.getElementById('planForWinback').checked = sourcePlan.forWinback || false;
-      document.getElementById('planModal').style.display = 'flex';
-    };
-
-    window.closePlanModal = () => document.getElementById('planModal').style.display = 'none';
-
-    window.savePlan = () => {
-      let companyId = document.getElementById('planCompanySelect').value;
-      let planId = document.getElementById('planId').value;
-      let company = db.companies.find(c => c.id === companyId);
-      if (!company) return;
-      let planData = {
-        id: planId || generateId(),
-        name: document.getElementById('planName').value.trim(),
-        monthlyFixed: parseFloat(document.getElementById('planMonthlyFixed').value),
-        pricePerKwh: parseFloat(document.getElementById('planPricePerKwh').value),
-        monthlyLimit: document.getElementById('planMonthlyLimit').value ? parseInt(document.getElementById('planMonthlyLimit').value) : null,
-        yearlyLimit: document.getElementById('planYearlyLimit').value ? parseInt(document.getElementById('planYearlyLimit').value) : null,
-        tolerancePercent: document.getElementById('planTolerancePercent').value ? parseFloat(document.getElementById('planTolerancePercent').value) : null,
-        overLimitPrice: document.getElementById('planOverLimitPrice').value ? parseFloat(document.getElementById('planOverLimitPrice').value) : null,
-        discountPercent: document.getElementById('planDiscountPercent').value ? parseFloat(document.getElementById('planDiscountPercent').value) : null,
-        nightPrice: document.getElementById('planNightPrice').value ? parseFloat(document.getElementById('planNightPrice').value) : null,
-        nightHours: document.getElementById('planNightHours').value.trim() || '',
-        description: document.getElementById('planDescription').value.trim() || '',
-        forTelesales: document.getElementById('planForTelesales').checked,
-        forWinback: document.getElementById('planForWinback').checked
-      };
-      if (!planData.name || isNaN(planData.monthlyFixed) || isNaN(planData.pricePerKwh)) { alert('Συμπληρώστε όνομα, πάγιο και τιμή'); return; }
-      if (planId) {
-        for (let c of db.companies) {
-          let idx = c.plans.findIndex(p => p.id === planId);
-          if (idx !== -1) { c.plans[idx] = planData; break; }
-        }
-      } else company.plans.push(planData);
-      saveDB(); closePlanModal(); renderAdmin(); updateAuditorSelects();
-    };
-
-    window.deletePlan = (companyId, planId) => {
-      let company = db.companies.find(c => c.id === companyId);
-      if (company) { company.plans = company.plans.filter(p => p.id !== planId); saveDB(); renderAdmin(); updateAuditorSelects(); }
-    };
-
-    window.openUserModal = (id) => {
-      let modal = document.getElementById('userModal');
-      document.getElementById('userModalTitle').innerText = id ? 'Επεξεργασία' : 'Νέος χρήστης';
-      document.getElementById('userId').value = id || '';
-      if (id) {
-        let u = db.users.find(u => u.id === id);
-        if (u) {
-          document.getElementById('userUsername').value = u.username;
-          document.getElementById('userEmail').value = u.email;
-          document.getElementById('userRole').value = u.role;
-          document.getElementById('userActive').value = u.active ? 'true' : 'false';
-          document.getElementById('userPassword').value = '';
-        }
-      } else {
-        document.getElementById('userUsername').value = '';
-        document.getElementById('userEmail').value = '';
-        document.getElementById('userRole').value = 'telesales';
-        document.getElementById('userActive').value = 'true';
-        document.getElementById('userPassword').value = '';
-      }
-      modal.style.display = 'flex';
-    };
-    window.closeUserModal = () => document.getElementById('userModal').style.display = 'none';
-    window.saveUser = () => {
-      let id = document.getElementById('userId').value;
-      let username = document.getElementById('userUsername').value.trim();
-      let email = document.getElementById('userEmail').value.trim();
-      let role = document.getElementById('userRole').value;
-      let active = document.getElementById('userActive').value === 'true';
-      let password = document.getElementById('userPassword').value;
-      if (!username || !email) { alert('Συμπληρώστε πεδία'); return; }
-      if (id) {
-        let u = db.users.find(u => u.id === id);
-        if (u) { u.username = username; u.email = email; u.role = role; u.active = active; if (password) u.password = password; }
-      } else {
-        if (!password) { alert('Δώστε κωδικό'); return; }
-        db.users.push({ id: generateId(), username, email, role, active, password });
-      }
-      saveDB(); closeUserModal(); renderAdmin();
-    };
-    window.deleteUser = (id) => {
-      if (db.users.length <= 1) { alert('Τουλάχιστον ένας χρήστης'); return; }
-      db.users = db.users.filter(u => u.id !== id);
-      saveDB(); renderAdmin();
-    };
-
-    // ======================== LOGIN ========================
-    window.doLogin = async function() {
+// Login function
+window.doLogin = async function() {
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
   
-  try {
-    // Φόρτωση από JSONBin
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
-    const data = await res.json();
-    const users = data.record.users;
-    
-    const user = users.find(u => u.username === username && u.password === password && u.active);
-    
-    if (user) {
-      currentUser = user;
-      document.getElementById('loginBox').style.display = 'none';
-      document.getElementById('sidebar').style.display = 'flex';
-      document.body.classList.remove('login-active');
-      updateAuditorSelects();
-      renderAdmin();
-      nav('auditor');
-      updateOnlineUsers();
-    } else {
-      alert('Λάθος στοιχεία! Δοκιμάστε admin / 1234');
+  await loadDB();
+  
+  const user = db.users.find(u => u.username === username && u.password === password && u.active);
+  
+  if (user) {
+    currentUser = user;
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('sidebar').style.display = 'flex';
+    document.body.classList.remove('login-active');
+    updateAuditorSelects();
+    renderAdmin();
+    nav('auditor');
+    updateOnlineUsers();
+  } else {
+    alert('Λάθος στοιχεία! Δοκιμάστε admin / 1234');
+  }
+};
+
+// Οι υπόλοιπες συναρτήσεις μένουν ΑΚΡΙΒΩΣ ΙΔΙΕΣ από εδώ και κάτω
+// [ΕΔΩ ΒΑΖΕΤΕ ΟΛΕΣ ΤΙΣ ΑΛΛΕΣ ΣΥΝΑΡΤΗΣΕΙΣ ΠΟΥ ΥΠΗΡΧΑΝ]
+// Π.χ. updateAuditorSelects, compareAllPlans, renderAdmin, κλπ.
     }
   } catch (error) {
     // Fallback σε admin/1234 αν δεν φορτώσει το JSONBin
