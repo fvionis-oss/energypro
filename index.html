@@ -809,6 +809,14 @@
     let currentUser = null;
     let tabId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     let selectedCompPlanId = null;
+    // ======================== ΒΑΣΗ ΔΕΔΟΜΕΝΩΝ ========================
+let db = { companies: [], users: [] };
+let currentUser = null;
+let tabId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+let selectedCompPlanId = null;
+
+// ΠΡΟΣΘΗΚΗ ΓΙΑ ΚΟΙΝΗ ΒΑΣΗ - ΒΑΛΤΕ ΤΟ BIN ID ΠΟΥ ΣΑΣ ΕΔΩΣΕ ΤΟ JSONBIN
+const BIN_ID = '69957181d0ea881f40c33b7d';
 
     const DEFAULT_DB = {
       companies: [
@@ -832,31 +840,41 @@
       ]
     };
 
-    function loadDB() {
-      const stored = localStorage.getItem('energypro_db');
-      if (stored) {
-        try {
-          db = JSON.parse(stored);
-          db.companies.forEach(c => {
-            c.plans.forEach(p => {
-              if (p.monthlyLimit === undefined) p.monthlyLimit = null;
-              if (p.yearlyLimit === undefined) p.yearlyLimit = null;
-              if (p.tolerancePercent === undefined) p.tolerancePercent = null;
-              if (p.overLimitPrice === undefined) p.overLimitPrice = null;
-              if (p.discountPercent === undefined) p.discountPercent = null;
-              if (p.nightPrice === undefined) p.nightPrice = null;
-              if (p.nightHours === undefined) p.nightHours = '';
-              if (p.forTelesales === undefined) p.forTelesales = false;
-              if (p.forWinback === undefined) p.forWinback = false;
-            });
-          });
-          db.users.forEach(u => { if (u.active === undefined) u.active = true; });
-        } catch { db = JSON.parse(JSON.stringify(DEFAULT_DB)); }
-      } else { db = JSON.parse(JSON.stringify(DEFAULT_DB)); }
+    async function loadDB() {
+  try {
+    // Φόρτωση από κοινή βάση JSONBin
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
+    const data = await res.json();
+    db = data.record;
+    console.log('Φορτώθηκαν κοινά δεδομένα!');
+  } catch {
+    // Αν αποτύχει, χρήση localStorage
+    const stored = localStorage.getItem('energypro_db');
+    if (stored) {
+      db = JSON.parse(stored);
+    } else {
+      db = JSON.parse(JSON.stringify(DEFAULT_DB));
+    }
+  }
+  saveDB();
+}
 
-      if (!db.users.some(u => u.username === 'admin' && u.password === '1234')) {
-        db.users.push({ id: 'admin-' + Date.now(), username: 'admin', email: 'admin@energypro.gr', role: 'admin', active: true, password: '1234' });
-      }
+async function saveDB() {
+  // Τοπική αποθήκευση
+  localStorage.setItem('energypro_db', JSON.stringify(db));
+  
+  // Αποθήκευση στην κοινή βάση
+  try {
+    await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(db)
+    });
+    console.log('Αποθηκεύτηκαν κοινά δεδομένα!');
+  } catch (e) {
+    console.log('Προσωρινά μόνο τοπικά');
+  }
+}
       saveDB();
     }
     function saveDB() { localStorage.setItem('energypro_db', JSON.stringify(db)); }
@@ -1369,4 +1387,5 @@
     loadDB();
   </script>
 </body>
+
 </html>
