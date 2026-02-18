@@ -1325,18 +1325,46 @@ async function saveDB() {
     };
 
     // ======================== LOGIN ========================
-    window.doLogin = function() {
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      loadDB();
-      let user = db.users.find(u => u.username === username && u.password === password && u.active);
-      if (!user && username === 'admin' && password === '1234') {
-        const admin = db.users.find(u => u.username === 'admin');
-        if (admin) { admin.password = '1234'; admin.active = true; }
-        else db.users.push({ id: 'u1', username: 'admin', email: 'admin@energypro.gr', role: 'admin', active: true, password: '1234' });
-        saveDB();
-        user = db.users.find(u => u.username === 'admin');
-      }
+    window.doLogin = async function() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  
+  try {
+    // Φόρτωση από JSONBin
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
+    const data = await res.json();
+    const users = data.record.users;
+    
+    const user = users.find(u => u.username === username && u.password === password && u.active);
+    
+    if (user) {
+      currentUser = user;
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('sidebar').style.display = 'flex';
+      document.body.classList.remove('login-active');
+      updateAuditorSelects();
+      renderAdmin();
+      nav('auditor');
+      updateOnlineUsers();
+    } else {
+      alert('Λάθος στοιχεία! Δοκιμάστε admin / 1234');
+    }
+  } catch (error) {
+    // Fallback σε admin/1234 αν δεν φορτώσει το JSONBin
+    if (username === 'admin' && password === '1234') {
+      currentUser = { username: 'admin', role: 'admin' };
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('sidebar').style.display = 'flex';
+      document.body.classList.remove('login-active');
+      updateAuditorSelects();
+      renderAdmin();
+      nav('auditor');
+      updateOnlineUsers();
+    } else {
+      alert('Λάθος στοιχεία ή πρόβλημα σύνδεσης');
+    }
+  }
+};
       if (user) {
         currentUser = user;
         document.getElementById('loginBox').style.display = 'none';
@@ -1389,3 +1417,4 @@ async function saveDB() {
 </body>
 
 </html>
+
